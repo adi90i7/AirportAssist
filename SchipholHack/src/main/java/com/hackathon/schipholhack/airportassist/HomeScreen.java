@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -35,6 +36,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -44,19 +46,27 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
     protected static final String TAG = "AdiTest";
     private BeaconManager beaconManager;
     private WebView webView;
-    List<String> beaconAddress;
+    List<String> beaconAddress = new ArrayList<String>();
+    private static Context mContext;
+    public static String beaconid;
+    public static String majorid;
+    public static String minorID;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_home_screen);
-
+        mContext = getApplicationContext();
 
 
         this.webView = (WebView) findViewById(R.id.webView);
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webView.addJavascriptInterface(new WebInterface(this), "testCall");
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webView.setScrollBarStyle(WebView.SCROLLBARS_OUTSIDE_OVERLAY);
+        webView.clearCache(true);
 
         webView.setWebViewClient(new WebViewClient(){
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -69,11 +79,15 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
 
             }
         });
-        webView.loadUrl("http://www.desidime.com");
+        webView.loadUrl("https://adi90i7.github.io/");
 
-        new testCallAPI().execute();
+
 
         beaconManager = BeaconManager.getInstanceForApplication(this);
+       /* beaconManager.setBackgroundBetweenScanPeriod(3000);
+        beaconManager.setBackgroundScanPeriod(10000);
+        beaconManager.setForegroundScanPeriod(5000);
+        beaconManager.setForegroundBetweenScanPeriod(10000);*/
         beaconManager.getBeaconParsers().add(new BeaconParser().
                 setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24"));
         beaconManager.bind(this);
@@ -107,21 +121,7 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
         beaconManager.setMonitorNotifier(new MonitorNotifier() {
             @Override
             public void didEnterRegion(Region region) {
-                NotificationManager notificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
-                Notification notification = new Notification(R.drawable.notification_template_icon_bg,"Sometext",System.currentTimeMillis());
 
-                Intent notificationIntent = new Intent(getApplicationContext(), HomeScreen.class);
-
-                notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-                PendingIntent intent = PendingIntent.getActivity(getApplicationContext(), 0,
-                        notificationIntent, 0);
-
-                notification.setLatestEventInfo(getApplicationContext(), "SomeSubject", "SOmeBody", intent);
-                notification.flags |= Notification.FLAG_AUTO_CANCEL;
-                notification.flags |= Notification.FLAG_SHOW_LIGHTS;
-                notificationManager.notify(0, notification);
 
                 Log.i(TAG,"Enter aagudhu");
             }
@@ -140,14 +140,39 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
         beaconManager.setRangeNotifier(new RangeNotifier() {
             @Override
             public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
-                if (beacons.size() > 0) {
-                   // if(beaconAddress.)
-                    beaconAddress.add(beacons.iterator().next().getBluetoothAddress());
-                    Log.i(TAG, "The first beacon I see is about "+beacons.iterator().next().getDistance()+" meters away.");
-                }
+                if(beacons.size()>0) {
+                    Beacon beacon = beacons.iterator().next();
+                    if (!beacon.getBluetoothName().equals("OnyxBeacon")) {
 
-                int beaconsize = beacons.size();
-                Log.i(TAG,"BeaconSize"+beaconsize);
+                        //  if(beacon.)
+                        beaconid = beacon.getId1().toString().toUpperCase();
+                        majorid = beacon.getId2().toString();
+                        minorID = beacon.getId3().toString();
+
+                        new testCallAPI().execute();
+
+                        //  beaconAddress.add(beacons.iterator().next().getBluetoothAddress());
+                        //  Log.i(TAG, "The first beacon I see is about " + beacons.iterator().next().getDistance() + " meters away.");
+
+                        NotificationManager notificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+                        Notification notification = new Notification(R.mipmap.ic_launcher,"Sometext",System.currentTimeMillis());
+
+                        Intent notificationIntent = new Intent(mContext, HomeScreen.class);
+
+                        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+                        PendingIntent intent = PendingIntent.getActivity(mContext, 0,
+                                notificationIntent, 0);
+
+                        notification.setLatestEventInfo(mContext, "SomeSubject", "SOmeBody", intent);
+                        notification.flags |= Notification.FLAG_AUTO_CANCEL;
+                        notification.flags |= Notification.FLAG_SHOW_LIGHTS;
+                        notificationManager.notify(0, notification);
+                    }
+                }
+                //int beaconsize = beacons.size();
+               // Log.i(TAG,"BeaconSize"+beaconsize);
 
             }
         });
@@ -170,7 +195,7 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
             StringBuilder builder = new StringBuilder();
             HttpClient httpClient = new DefaultHttpClient();
             HttpContext localContext = new BasicHttpContext();
-            HttpGet httpGet = new HttpGet("http://www.cheesejedi.com/rest_services/get_big_cheese.php?puzzle=1");
+            HttpGet httpGet = new HttpGet("http://airportassistanceandoffer.scalingo.io/airports/productsofferandsuggestions?beaconUUID=B233860B-5F9D-44EF-B657-C2966D89BBFA&flightnr=DL0165&appId=XXXXX");
             String text = null;
             try {
                 HttpResponse response = httpClient.execute(httpGet, localContext);
@@ -200,6 +225,17 @@ public class HomeScreen extends ActionBarActivity implements BeaconConsumer {
             }
             return builder.toString();
 
+        }
+    }
+
+    public class WebInterface{
+        Context mcontext;
+        WebInterface(Context m){
+            mcontext =m;
+        }
+        @JavascriptInterface
+        public void showToast(String toast) {
+            Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
         }
     }
 
